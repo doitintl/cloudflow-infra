@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates or updates a DoiT CloudFlow connection IAM role, must be used in us-east-1 region
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Role Configuration"
+        Parameters:
+          - RoleName
+          - TrustedAccountId
+          - ExternalId
+      - Label:
+          default: "Permissions"
+        Parameters:
+          - ManagedPolicyArns
+          - AllowedActions
+
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the role to create or update
+    AllowedPattern: "^[a-zA-Z0-9+=,.@_-]+$"
+    ConstraintDescription: "Role name must contain only alphanumeric characters and the following: +=,.@_-"
+
+  TrustedAccountId:
+    Type: String
+    Description: AWS Account ID that is allowed to assume this role
+    AllowedPattern: '^\d{12}$'
+    ConstraintDescription: Account ID must be exactly 12 digits
+    Default: "068664126052"
+
+  ExternalId:
+    Type: String
+    Description: External ID required for cross-account role assumption (provides additional security)
+    MinLength: 1
+    MaxLength: 1224
+    AllowedPattern: "^[a-zA-Z0-9+=,.@_-]+$"
+    ConstraintDescription: "External ID must contain only alphanumeric characters and the following: +=,.@_-"
+
+  ManagedPolicyArns:
+    Type: CommaDelimitedList
+    Description: "Comma-separated list of AWS managed policy ARNs to attach to the role"
+    Default: ""
+
+  AllowedActions:
+    Type: CommaDelimitedList
+    Description: "Comma-separated list of actions to allow for the role"
+    Default: ""
+
+Conditions:
+  IsUSEast1: !Equals
+    - !Ref "AWS::Region"
+    - "us-east-1"
+  NotUSEast1: !Not [!Condition IsUSEast1]
+  HasManagedPolicies: !Not [!Equals [!Join ["", !Ref ManagedPolicyArns], ""]]
+  HasAllowedActions: !Not [!Equals [!Join ["", !Ref AllowedActions], ""]]
+
+Resources:
+  # Region check to prevent deployment outside us-east-1
+  RegionCheck:
+    Condition: NotUSEast1
+    Type: "AWS::CloudFormation::CustomResource"
+    Properties:
+      ServiceToken: "arn:aws:lambda:us-east-1:123456789012:function:nonexistent-function"
+
+  # Create the IAM role
+  DoitCloudFlowConnectionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: "Role for DoiT CloudFlow connection"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${TrustedAccountId}:root
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+            Sid: "AllowAssumeRole"
+      Path: "/"
+      ManagedPolicyArns: !If [HasManagedPolicies, !Ref ManagedPolicyArns, []]
+
+  # Create the base inline policy for the role
+  DoitCloudFlowConnectionBasePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: DoitCloudFlowConnectionBasePolicy
+      Roles:
+        - !Ref DoitCloudFlowConnectionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "iam:ListAttachedRolePolicies"
+              - "iam:ListRolePolicies"
+              - "iam:GetRolePolicy"
+            Effect: Allow
+            Resource: !GetAtt DoitCloudFlowConnectionRole.Arn
+            Sid: "AllowListRolePolicies"
+          - Action:
+              - "iam:GetPolicy"
+              - "iam:GetPolicyVersion"
+            Effect: Allow
+            Resource: "*"
+            Sid: "AllowGetPolicy"
+
+  # Create the custom inline policy for the role
+  CloudFlowConnectionRoleCustomPolicy:
+    Type: AWS::IAM::Policy
+    Condition: HasAllowedActions
+    Properties:
+      PolicyName: CloudFlowConnectionRoleCustomPolicy
+      Roles:
+        - !Ref DoitCloudFlowConnectionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: !Ref AllowedActions
+            Effect: Allow
+            Resource: "*"
+            Sid: "AllowActions"
+
+Outputs:
+  RoleArn:
+    Value: !GetAtt DoitCloudFlowConnectionRole.Arn
+    Description: ARN of the created IAM role
