@@ -30,7 +30,7 @@ variable "custom_role_id" {
   type        = string
   default     = ""
   validation {
-    condition     = var.custom_role_permissions == "" || can(regex("^[a-zA-Z][a-zA-Z0-9_]{2,63}$", var.custom_role_id))
+    condition     = var.custom_role_id == "" || can(regex("^[a-zA-Z][a-zA-Z0-9_]{2,63}$", var.custom_role_id))
     error_message = "Custom role ID must be 3-64 characters long, start with a letter, and contain only letters, numbers, and underscores."
   }
 }
@@ -52,7 +52,7 @@ variable "organization_id" {
   type        = string
   default     = null
   validation {
-    condition     = var.iam_binding_target_type != "project" && can(regex("^[0-9]{12,20}$", var.organization_id)) || var.iam_binding_target_type == "project"
+    condition     = var.organization_id == null || can(regex("^[0-9]{12,20}$", var.organization_id))
     error_message = "Organization ID must be a 12-20 digit numerical ID."
   }
 }
@@ -72,7 +72,7 @@ variable "folder_id" {
   type        = string
   default     = null
   validation {
-    condition     = var.iam_binding_target_type == "folder" && can(regex("^[0-9]{12,20}$", var.folder_id)) || var.iam_binding_target_type != "folder"
+    condition     = var.folder_id == null || can(regex("^[0-9]{12,20}$", var.folder_id))
     error_message = "Folder ID must be a 12-20 digit numerical ID."
   }
 }
