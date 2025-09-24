@@ -42,7 +42,7 @@ variable "predefined_roles" {
 }
 
 variable "custom_role_permissions" {
-  description = "A list of permissions to include in the custom role (e.g., [\"compute.instances.get\", \"storage.objects.list\"])."
+  description = "A list of permissions to include in the custom role (e.g., [\"compute.instances.get\", \"storage.objects.list\"]). \"iam.roles.get\" and \"cloudasset.assets.searchAllIamPolicies\" will always be included."
   type        = string
   default     = ""
 }
@@ -121,8 +121,14 @@ locals {
   # Convert comma-separated string to a list and filter out empty strings
   predefined_roles_list = toset(var.predefined_roles != "" ? [for role in split(",", var.predefined_roles) : role if role != ""] : [])
 
+  # Required permissions that should always be included
+  required_permissions = ["iam.roles.get", "cloudasset.assets.searchAllIamPolicies"]
+  
   # Convert comma-separated string to a list and filter out empty strings
-  custom_role_permissions_list = toset(var.custom_role_permissions != "" ? [for permission in split(",", var.custom_role_permissions) : permission if permission != ""] : [])
+  user_permissions = var.custom_role_permissions != "" ? [for permission in split(",", var.custom_role_permissions) : trimspace(permission) if trimspace(permission) != ""] : []
+  
+  # Merge and deduplicate user defined custom permissions with required permissions
+  custom_role_permissions_list = toset(concat(local.required_permissions, local.user_permissions))
 }
 
 # --- Resources ---
