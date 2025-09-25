@@ -28,7 +28,7 @@ variable "project_id" {
 variable "custom_role_id" {
   description = "The ID for the custom role (e.g., myCustomViewerRole). Must be unique at its creation level."
   type        = string
-  default     = ""
+  nullable     = false
   validation {
     condition     = var.custom_role_id == "" || can(regex("^[a-zA-Z][a-zA-Z0-9_]{2,63}$", var.custom_role_id))
     error_message = "Custom role ID must be 3-64 characters long, start with a letter, and contain only letters, numbers, and underscores."
