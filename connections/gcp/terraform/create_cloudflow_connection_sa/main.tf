@@ -30,8 +30,8 @@ variable "custom_role_id" {
   type        = string
   nullable     = false
   validation {
-    condition     = var.custom_role_id == "" || can(regex("^[a-zA-Z][a-zA-Z0-9_]{2,63}$", var.custom_role_id))
-    error_message = "Custom role ID must be 3-64 characters long, start with a letter, and contain only letters, numbers, and underscores."
+    condition     = var.custom_role_id == "" || can(regex("^[a-zA-Z0-9_.]{3,64}$", var.custom_role_id))
+    error_message = "Custom role ID must be 3-64 characters long and contain only letters, numbers, underscores, and periods."
   }
 }
 
