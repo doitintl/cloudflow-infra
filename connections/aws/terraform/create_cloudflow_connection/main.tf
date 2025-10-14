@@ -55,6 +55,12 @@ variable "allowed_actions" {
   default     = []
 }
 
+variable "required_permissions" {
+  description = "Required permissions that should always be included"
+  type        = list(string)
+  default     = ["ec2:DescribeRegions"]
+}
+
 # Data sources
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
@@ -64,6 +70,7 @@ locals {
   is_us_east_1         = data.aws_region.current.name == "us-east-1"
   has_managed_policies = length(var.managed_policy_arns) > 0
   has_allowed_actions  = length(var.allowed_actions) > 0
+  all_permissions      = concat(var.required_permissions, var.allowed_actions)
 }
 
 # Precondition check for us-east-1 region
@@ -149,9 +156,8 @@ resource "aws_iam_role_policy" "doit_cloudflow_connection_base_policy" {
   depends_on = [aws_iam_role.doit_cloudflow_connection_role]
 }
 
-# Create the custom inline policy for the role if allowed actions are provided
+# Create the custom inline policy for the role with required permission
 resource "aws_iam_role_policy" "cloudflow_connection_role_custom_policy" {
-  count = local.has_allowed_actions ? 1 : 0
 
   name = "CloudFlowConnectionRoleCustomPolicy"
   role = aws_iam_role.doit_cloudflow_connection_role.id
@@ -160,7 +166,7 @@ resource "aws_iam_role_policy" "cloudflow_connection_role_custom_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = var.allowed_actions
+        Action   = local.all_permissions
         Effect   = "Allow"
         Resource = "*"
         Sid      = "AllowActions"
