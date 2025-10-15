@@ -48,6 +48,11 @@ Parameters:
     Description: "Comma-separated list of actions to allow for the role"
     Default: ""
 
+  RequiredPermissions:
+    Type: CommaDelimitedList
+    Description: "Required permissions that should always be included"
+    Default: "ec2:DescribeRegions"
+
 Conditions:
   IsUSEast1: !Equals
     - !Ref "AWS::Region"
@@ -108,10 +113,9 @@ Resources:
             Resource: "*"
             Sid: "AllowGetPolicy"
 
-  # Create the custom inline policy for the role
+  # Create the custom inline policy for the role with required permissions
   CloudFlowConnectionRoleCustomPolicy:
     Type: AWS::IAM::Policy
-    Condition: HasAllowedActions
     Properties:
       PolicyName: CloudFlowConnectionRoleCustomPolicy
       Roles:
@@ -119,7 +123,15 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Action: !Ref AllowedActions
+          - Action: !If
+              - HasAllowedActions
+              - !Split
+                - ","
+                - !Join
+                  - ","
+                  - - !Join [",", !Ref RequiredPermissions]
+                    - !Join [",", !Ref AllowedActions]
+              - !Ref RequiredPermissions
             Effect: Allow
             Resource: "*"
             Sid: "AllowActions"
