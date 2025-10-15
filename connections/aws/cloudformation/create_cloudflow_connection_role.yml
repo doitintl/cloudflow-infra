@@ -123,15 +123,15 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Action: !Split
-              - ","
-              - !If
-                - HasAllowedActions
+          - Action: !If
+              - HasAllowedActions
+              - !Split
+                - ","
                 - !Join
                   - ","
-                  - - !Ref RequiredPermissions
-                    - !Ref AllowedActions
-                - !Ref RequiredPermissions
+                  - - !Join [",", !Ref RequiredPermissions]
+                    - !Join [",", !Ref AllowedActions]
+              - !Ref RequiredPermissions
             Effect: Allow
             Resource: "*"
             Sid: "AllowActions"
